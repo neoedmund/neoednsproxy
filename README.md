@@ -31,3 +31,12 @@ It just resolve DNS. No statistis. If you need you may hack the code.
 Also it do not support black list domains, if you need it, you may look for an AdBlock plugin for firefox like [neoeblock](https://github.com/neoedmund/neoeblock), they can do more things than domain blocking.
 
 
+Files need to run
+--------------------------------
+You only need 3 files:
+* `NeoeDnsProxy.jar`
+* `dnsservers.cfg`
+* `run2.sh` (on unix) or  `run2.cmd` (on Windows)
+
+You also need Java 7 or later.
+
