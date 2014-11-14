@@ -131,7 +131,26 @@ public class DnsProxy2 {
 		int running = 0;
 		double avgTime = 0;
 		int cnt = 0;
-
+		/** auto clear cache */
+		void autoRefresh(int sec){
+			System.out.println("cache clears every "+sec+" seconds");
+			final long ms = sec * 1000;
+			new Thread(){ public void run() {
+				while(true) {
+					try{ // clear cache
+						int n = Cache.m.size();
+			                Cache.m.clear();
+			                Cache.updated.clear();
+			                U.inserted.clear(); //useless
+			                System.out.println("auto cleared cache:"+n);
+					}catch(Exception ex){
+						System.out.println("error when clear cache:"+ex);
+					}
+					U.sleep(ms);
+				}
+			}  }.start();
+			
+		}
 		private void run() {
 			Log.app.log("server started");
 
@@ -140,6 +159,9 @@ public class DnsProxy2 {
 				DnsResolver.init();
 				//Cache.load();
 				UI.addUI();
+				
+				// 
+				autoRefresh(60*60);
 
 				while (true) {
 					byte[] buf = new byte[MAX_PACKET_SIZE];

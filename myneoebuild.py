@@ -2,7 +2,7 @@
 { 
 baseDir:".",
 prjs:[
- [NeoeDnsProxy,.]
+ [NeoeDnsProxy,., {main:"neoe.dns.DnsProxy2"}]
 ],
 destDir:".",
 debug:true,
