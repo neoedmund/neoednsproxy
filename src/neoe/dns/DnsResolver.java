@@ -42,13 +42,13 @@ public class DnsResolver {
 		for (String host : dnsHostList) {
 			ts[ti++] = resolveConcurrent(host, res, msg);
 		}
-		U.sleep(10);
+		
 		for (int i = 0; i < 120; i++) { // bug: dont be too small
+			U.sleep(10);
 			if (res[0] != null) {
 				U.stopThreads(ts);
 				return res[0];
 			}
-			U.sleep(10);
 		}
 		// timeout!
 		Log.app.log("resolve timeout! data=" + msg);
