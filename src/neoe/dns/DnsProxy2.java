@@ -1,25 +1,18 @@
 package neoe.dns;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import neoe.dns.format.DNSMessage;
 import neoe.dns.model.DnsRec;
-import neoe.util.FileUtil;
-import neoe.util.PyData;
 
 /**
  * 
@@ -102,7 +95,7 @@ public class DnsProxy2 {
 	 * @throws java.lang.Exception
 	 */
 	public static void main(String[] args) throws Exception {
-		System.out.println("NeoeDnsProxy v1.0 20141015");
+		System.out.println("NeoeDnsProxy v1.0.1510");
 		server = new Server("127.0.0.1", U.DEFAULT_DNS_PORT);
 		server.run();
 		// Runtime.getRuntime().addShutdownHook(new Thread() {

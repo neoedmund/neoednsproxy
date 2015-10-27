@@ -1,7 +1,5 @@
 package neoe.dns;
 
-import java.io.FileInputStream;
-import neoe.dns.format.DNSMessage;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.StandardProtocolFamily;
@@ -9,21 +7,20 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.LinkedBlockingDeque;
+
+import neoe.dns.format.DNSMessage;
 import neoe.dns.model.DnsRec;
-import neoe.util.FileUtil;
-import neoe.util.PyData;
 
 /**
  *
  * @author neoe
  */
+@Deprecated
 public class DnsProxy1 {
 
     public static Server server;
