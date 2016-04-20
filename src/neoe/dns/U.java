@@ -179,7 +179,7 @@ public class U {
 		if (Cache.m == null || DnsProxy2.server == null)
 			return;
 		UI.trayIcon.setToolTip("Cached " + Cache.m.size() + ", "
-				+ DnsProxy2.server.getHitRateStr());
+				+ DnsProxy2.Quest.getHitRateStr());
 	}
 
 	static void stopThreads(Thread[] ts) {

@@ -2,9 +2,7 @@ package neoe.dns;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.IOException;
-
-import com.sun.corba.se.impl.ior.ByteBuffer;
+import java.nio.ByteBuffer;
 
 import neoe.dns.format.DNSMessage;
 
@@ -30,7 +28,7 @@ public class AntiVirus {
 		out.writeShort(msg.getAdditionalRecords().length);
 		msg.getQuestions()[0].dump(out);
 		out.close();
-		return DNSMessage.parse(java.nio.ByteBuffer.wrap(ba.toByteArray()));
+		return DNSMessage.parse(ByteBuffer.wrap(ba.toByteArray()));
 	}
 
 	public static String getSecurityString(DNSMessage msg) {

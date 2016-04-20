@@ -85,7 +85,7 @@ public class DnsProxy2 {
 			if (all == 0) {
 				return "HitRate:NA";
 			}
-			return String.format("HitRate:%.2f", (hit / (float) all));
+			return String.format("HitRate:%d%%", (hit * 100 / all));
 		}
 
 	}
@@ -248,10 +248,6 @@ public class DnsProxy2 {
 				}
 			}
 		}
-
-        public String getHitRateStr() {
-            return "hitrate";
-        }
 
 	}
 

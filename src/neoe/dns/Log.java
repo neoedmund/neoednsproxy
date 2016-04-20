@@ -37,6 +37,7 @@ public class Log {
             //out.write(sb.toString());
             //out.flush();
             System.out.print(sb.toString());
+            System.out.flush();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
