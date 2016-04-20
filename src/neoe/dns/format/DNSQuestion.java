@@ -1,5 +1,8 @@
 package neoe.dns.format;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+
 /**
  * A single question in a DNS message
  *
@@ -70,4 +73,16 @@ public final class DNSQuestion {
         builder.append(qclass);
         return builder.toString();
     }
+
+	public void dump(DataOutputStream out) throws IOException {
+		String[] ss = name.split("\\.");
+		for (int i=0;i<ss.length;i++){
+			String s = ss[i];
+			out.writeByte(s.length());
+			out.write(s.getBytes());
+		}
+		out.writeByte(0);
+		out.writeShort(qtype);
+		out.writeShort(qclass);
+	}
 }

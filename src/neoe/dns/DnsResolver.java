@@ -1,5 +1,7 @@
 package neoe.dns;
 
+import static neoe.dns.U.DEFAULT_DNS_PORT;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,8 +12,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.List;
-import static neoe.dns.DnsProxy1.MAX_PACKET_SIZE;
-import static neoe.dns.U.DEFAULT_DNS_PORT;
+
 import neoe.dns.format.DNSMessage;
 
 /**
@@ -132,4 +133,5 @@ public class DnsResolver {
 		}
 		return null;
 	}
+    static final int MAX_PACKET_SIZE = 1024;
 }

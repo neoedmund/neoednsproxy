@@ -32,10 +32,13 @@ public class DnsProxy2 {
 
 		public void run() {
 			try {
-				final DNSMessage msg = DNSMessage.parse(ByteBuffer.wrap(
-						packet.getData(), packet.getOffset(),
-						packet.getLength()));
-				dealWith(msg);
+				final DNSMessage msg = DNSMessage.parse(ByteBuffer.wrap(packet.getData(), packet.getOffset(), packet.getLength()));
+				final DNSMessage msg2 = AntiVirus.clearifyQuestion(msg);
+				if (msg2 == null) {
+					Log.app.log("[AV]drop " + AntiVirus.getSecurityString(msg));
+				} else {
+					dealWith(msg2);
+				}
 			} catch (Throwable ex) {
 				ex.printStackTrace();
 			}
@@ -46,6 +49,7 @@ public class DnsProxy2 {
 
 		private void dealWith(DNSMessage msg) throws Exception {
 			String key = msg.toIdString();
+			Log.resolve.log("[Q]" + key);
 			if (Cache.isDisabledDomain(key)) {
 				Log.resolve.log("disabled domain:" + msg.toIdString());
 				reply(new Reply(msg.client, msg.getId(), msg.bs));
@@ -124,47 +128,49 @@ public class DnsProxy2 {
 		int running = 0;
 		double avgTime = 0;
 		int cnt = 0;
+
 		/** auto clear cache */
-		void autoRefresh(int sec){
-			System.out.println("cache clears every "+sec+" seconds");
+		void autoRefresh(int sec) {
+			System.out.println("cache clears every " + sec + " seconds");
 			final long ms = sec * 1000;
-			new Thread(){ public void run() {
-				while(true) {
-					try{ // clear cache
-						int n = Cache.m.size();
-			                Cache.m.clear();
-			                Cache.updated.clear();
-			                U.inserted.clear(); //useless
-			                System.out.println("auto cleared cache:"+n);
-					}catch(Exception ex){
-						System.out.println("error when clear cache:"+ex);
+			new Thread() {
+				public void run() {
+					while (true) {
+						try { // clear cache
+							int n = Cache.m.size();
+							Cache.m.clear();
+							Cache.updated.clear();
+							U.inserted.clear(); // useless
+							System.out.println("auto cleared cache:" + n);
+						} catch (Exception ex) {
+							System.out.println("error when clear cache:" + ex);
+						}
+						U.sleep(ms);
 					}
-					U.sleep(ms);
 				}
-			}  }.start();
-			
+			}.start();
+
 		}
+
 		private void run() {
 			Log.app.log("server started");
 
 			try {
-				//loadConfig();
+				// loadConfig();
 				DnsResolver.init();
-				//Cache.load();
+				// Cache.load();
 				UI.addUI();
-				
-				// 
-				autoRefresh(60*60);
+
+				//
+				autoRefresh(60 * 60);
 
 				while (true) {
 					byte[] buf = new byte[MAX_PACKET_SIZE];
-					final DatagramPacket packet = new DatagramPacket(buf,
-							buf.length);
+					final DatagramPacket packet = new DatagramPacket(buf, buf.length);
 					sso.receive(packet);
 					running++;
 					final long startTime = System.currentTimeMillis();
-					Log.app.log("accept(" + running + ")" + packet.getPort()
-							+ "/" + packet.getLength());
+					Log.app.log("accept(" + running + ")" + packet.getPort() + "/" + packet.getLength());
 					new Thread() {
 						public void run() {
 							new Quest(sso, packet).run();
@@ -174,9 +180,7 @@ public class DnsProxy2 {
 							cnt++;
 							avgTime = s1 / (double) cnt;
 
-							Log.app.log("finish(" + running + ")[" + t2 + " / "
-									+ (int) avgTime + " ms]" + packet.getPort()
-									+ "/" + packet.getLength());
+							Log.app.log("finish(" + running + ")[" + t2 + " / " + (int) avgTime + " ms]" + packet.getPort() + "/" + packet.getLength());
 						}
 					}.start();
 				}
@@ -186,7 +190,6 @@ public class DnsProxy2 {
 			}
 		}
 
-	 
 		class DbSaver extends Thread {
 
 			@Override
@@ -203,14 +206,13 @@ public class DnsProxy2 {
 								DnsRec rec = new DnsRec();
 								rec.domain = (String) o[0];
 								rec.reply = (byte[]) o[1];
-								if (rec.canFitToDB()
-										&& !U.inserted.contains(rec.domain)) {
+								if (rec.canFitToDB() && !U.inserted.contains(rec.domain)) {
 									U.inserted.add(rec.domain);
 									rec.updated = new Date();
 									rs.add(rec);
 								}
 							}
-						 
+
 						}
 						{
 							int size = hitKey.size();
@@ -222,20 +224,18 @@ public class DnsProxy2 {
 								long updated = Cache.getUpdated(domain);
 								boolean needUpdate = now - updated > U.DNS_UPDATE_IN_MS;
 								if (needUpdate) {
-									final DNSMessage msgResp = DnsResolver
-											.resolve(msg);
+									final DNSMessage msgResp = DnsResolver.resolve(msg);
 									if (msgResp == null) {
-										Log.resolve
-												.log("cannot resolve:" + msg);
+										Log.resolve.log("cannot resolve:" + msg);
 										continue;
 									}
 									Cache.put(domain, msgResp.bs);
-								 
+
 								} else {
-									 
+
 								}
 							}
-						 
+
 						}
 						long t2 = System.currentTimeMillis() - t1;
 						if (t2 > 10) {
@@ -248,6 +248,10 @@ public class DnsProxy2 {
 				}
 			}
 		}
+
+        public String getHitRateStr() {
+            return "hitrate";
+        }
 
 	}
 
@@ -274,5 +278,4 @@ public class DnsProxy2 {
 		short id;
 		byte[] data;
 	}
-
 }

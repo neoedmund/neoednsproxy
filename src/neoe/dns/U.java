@@ -176,10 +176,10 @@ public class U {
 	}
 
 	static synchronized void updateTooltip() {
-		if (Cache.m == null || DnsProxy1.server == null)
+		if (Cache.m == null || DnsProxy2.server == null)
 			return;
 		UI.trayIcon.setToolTip("Cached " + Cache.m.size() + ", "
-				+ DnsProxy1.server.getHitRateStr());
+				+ DnsProxy2.server.getHitRateStr());
 	}
 
 	static void stopThreads(Thread[] ts) {

@@ -8,7 +8,6 @@ import java.util.Date;
  * @author neoe
  */
 public class Log {
-
     public static Log app = new Log("app", "log-app.log");
     public static Log resolve = new Log("resolve", "log-resolve.log");
 //    BufferedWriter out;
