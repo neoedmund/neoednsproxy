@@ -32,13 +32,12 @@ public class DnsProxy2 {
 
 		public void run() {
 			try {
-				final DNSMessage msg = DNSMessage.parse(ByteBuffer.wrap(packet.getData(), packet.getOffset(), packet.getLength()));
-				final DNSMessage msg2 = AntiVirus.clearifyQuestion(msg);
-				if (msg2 == null) {
-					Log.app.log("[AV]drop " + AntiVirus.getSecurityString(msg));
-				} else {
-					dealWith(msg2);
+				DNSMessage msg = DNSMessage.parse(ByteBuffer.wrap(packet.getData(), packet.getOffset(), packet.getLength()));
+				if (msg.hasExtraData || AntiVirus.isBadQuestion(msg)) {
+					Log.app.log("[AV]bad " + AntiVirus.getSecurityString(msg));
+					msg = AntiVirus.clearifyQuestion(msg);
 				}
+				dealWith(msg);
 			} catch (Throwable ex) {
 				ex.printStackTrace();
 			}
@@ -99,7 +98,10 @@ public class DnsProxy2 {
 	 * @throws java.lang.Exception
 	 */
 	public static void main(String[] args) throws Exception {
-		System.out.println("NeoeDnsProxy v1.0.1510");
+		System.out.println("NeoeDnsProxy v1.160421.1");
+		if (args.length > 0 && "log".equals(args[0]))
+			Log.logToFile = true;
+		Log.init();
 		server = new Server("127.0.0.1", U.DEFAULT_DNS_PORT);
 		server.run();
 		// Runtime.getRuntime().addShutdownHook(new Thread() {
