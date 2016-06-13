@@ -41,8 +41,8 @@ public class U {
 
 	static byte[] ZERO_BA = new byte[10];
 
-	public static void reply(byte[] bs, short id, SocketAddress client,
-			DatagramChannel socketChannel) throws IOException {
+	public static void reply(byte[] bs, short id, SocketAddress client, DatagramChannel socketChannel)
+			throws IOException {
 		if (bs == null) {
 			bs = ZERO_BA;
 		}
@@ -55,8 +55,7 @@ public class U {
 			if (bs == ZERO_BA) {
 				Log.resolve.log("disabled record replied (bug?)");
 			} else {
-				Log.resolve.log("replied to " + client + " id=" + id
-						+ " bytes sent:" + bytesSent + " "
+				Log.resolve.log("replied to " + client + " id=" + id + " bytes sent:" + bytesSent + " "
 						+ DNSMessage.parse(buf).toIdString());
 			}
 		} catch (Exception ex) {
@@ -64,8 +63,7 @@ public class U {
 		}
 	}
 
-	public static void reply(byte[] bs, short id, DatagramSocket so,
-			DatagramPacket packet) {
+	public static void reply(byte[] bs, short id, DatagramSocket so, DatagramPacket packet) {
 
 		if (bs == null) {
 			bs = ZERO_BA;
@@ -83,8 +81,7 @@ public class U {
 			if (bs == ZERO_BA) {
 				Log.resolve.log("disabled record replied (bug?)");
 			} else {
-				Log.resolve.log("replied to " + address + " id=" + id
-						+ " bytes sent:" + bs.length + " "
+				Log.resolve.log("replied to " + address + " id=" + id + " bytes sent:" + bs.length + " "
 						+ DNSMessage.parse(buf).toIdString());
 			}
 		} catch (Exception ex) {
@@ -176,10 +173,9 @@ public class U {
 	}
 
 	static synchronized void updateTooltip() {
-		if (Cache.m == null || DnsProxy2.server == null)
+		if (Cache.m == null || DnsProxy2.server == null || UI.trayIcon == null)
 			return;
-		UI.trayIcon.setToolTip("Cached " + Cache.m.size() + ", "
-				+ DnsProxy2.Quest.getHitRateStr());
+		UI.trayIcon.setToolTip("Cached " + Cache.m.size() + ", " + DnsProxy2.Quest.getHitRateStr());
 	}
 
 	static void stopThreads(Thread[] ts) {
