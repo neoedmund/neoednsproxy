@@ -16,14 +16,19 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.swing.JOptionPane;
 
 import neoe.dns.format.DNSMessage;
 import neoe.dns.format.DNSResourceRecord;
+import neoe.util.Config;
 import neoe.util.FileUtil;
+import neoe.util.Log;
 
 /**
  * 
@@ -31,15 +36,67 @@ import neoe.util.FileUtil;
  */
 public class U {
 
+	private static final String APP_CONF = "app.conf";
 	public static final int DEFAULT_DNS_PORT = 53;
+	public static final String VER = "v161226";
 	static long DNS_UPDATE_IN_MS = 1000 * 60 * 2;
 	static Set<String> inserted = new HashSet<>();
+	private static boolean useBlacklist;
+	private static Map conf;
+	public static boolean debug = false;
+	private static HashSet lastSet;
+	private static List lastList;
+	public static String dumpfile;
+	public static int dumpSleep;
+	public static int timeoutUnitInMs;
+	public static int timeoutUnitCnt;
+
+	public static Set blacklist() throws Exception {
+		if (!useBlacklist)
+			return Collections.EMPTY_SET;
+		conf = Config.getConfig(APP_CONF, false);
+		List list = (List) conf.get("blacklist");
+		if (list != lastList) {
+			lastList = list;
+			lastSet = new HashSet(list);
+		}
+		System.out.println("[bl]="+lastSet);
+		return lastSet;
+	};
+
+	public static void loadConf() throws Exception {
+		conf = Config.getConfig(APP_CONF, false);
+		if (conf == null) {
+			U.showMsg("config not exists!");
+			System.exit(1);
+			return;
+		}
+		DNS_UPDATE_IN_MS = toInt(conf.get("DNS_UPDATE_IN_MS"), 1000 * 60 * 2);
+		autoRefreshInSec = toInt(conf.get("autoRefreshInSec"), 60 * 60);
+		useBlacklist = "true".equals(conf.get("useBlacklist"));
+		debug = "true".equals(conf.get("debug"));
+		dumpfile = (String) conf.get("dumpfile");
+		dumpSleep = toInt(conf.get("dumpSleep"), 5000);
+		
+		timeoutUnitInMs= toInt(conf.get("timeoutUnitInMs"), 10);
+		timeoutUnitCnt= toInt(conf.get("timeoutUnitCnt"), 10);
+		DnsResolver.dnsHostList = (List) conf.get("dns");
+	}
+
+	private static int toInt(Object o, int def) {
+		try {
+			return Integer.parseInt(o.toString());
+		} catch (Exception e) {
+			return def;
+		}
+	}
 
 	public static InputStream getIns(String fn) {
 		return getIns(fn, false);
 	}
 
 	static byte[] ZERO_BA = new byte[10];
+	public static int autoRefreshInSec;
 
 	public static void reply(byte[] bs, short id, SocketAddress client, DatagramChannel socketChannel)
 			throws IOException {
@@ -53,9 +110,9 @@ public class U {
 			int bytesSent = socketChannel.send(buf, client);
 			buf.rewind();
 			if (bs == ZERO_BA) {
-				Log.resolve.log("disabled record replied (bug?)");
+				Log.log("disabled record replied (bug?)");
 			} else {
-				Log.resolve.log("replied to " + client + " id=" + id + " bytes sent:" + bytesSent + " "
+				Log.log("replied to " + client + " id=" + id + " bytes sent:" + bytesSent + " "
 						+ DNSMessage.parse(buf).toIdString());
 			}
 		} catch (Exception ex) {
@@ -79,9 +136,9 @@ public class U {
 			so.send(packet);
 
 			if (bs == ZERO_BA) {
-				Log.resolve.log("disabled record replied (bug?)");
+				Log.log("disabled record replied (bug?)");
 			} else {
-				Log.resolve.log("replied to " + address + " id=" + id + " bytes sent:" + bs.length + " "
+				Log.log("replied to " + address + " id=" + id + " bytes sent:" + bs.length + " "
 						+ DNSMessage.parse(buf).toIdString());
 			}
 		} catch (Exception ex) {
@@ -158,7 +215,7 @@ public class U {
 		if (e instanceof ClosedByInterruptException) {
 			// ignore
 		} else {
-			Log.app.log("err:" + except2Str(e));
+			Log.log("err:" + except2Str(e));
 		}
 	}
 

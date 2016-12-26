@@ -1,5 +1,7 @@
 package neoe.dns;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -12,7 +14,9 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import neoe.dns.format.DNSMessage;
+import neoe.dns.format.DNSQuestion;
 import neoe.dns.model.DnsRec;
+import neoe.util.Log;
 
 /**
  * 
@@ -32,11 +36,9 @@ public class DnsProxy2 {
 
 		public void run() {
 			try {
-				DNSMessage msg = DNSMessage.parse(ByteBuffer.wrap(packet.getData(), packet.getOffset(), packet.getLength()));
-				if (msg.hasExtraData || AntiVirus.isBadQuestion(msg)) {
-					Log.app.log("[AV]bad " + AntiVirus.getSecurityString(msg));
-					msg = AntiVirus.clearifyQuestion(msg);
-				}
+				DNSMessage msg = DNSMessage
+						.parse(ByteBuffer.wrap(packet.getData(), packet.getOffset(), packet.getLength()));
+
 				dealWith(msg);
 			} catch (Throwable ex) {
 				ex.printStackTrace();
@@ -47,27 +49,40 @@ public class DnsProxy2 {
 		static int notHit, hit;
 
 		private void dealWith(DNSMessage msg) throws Exception {
-			String key = msg.toIdString();
-			Log.resolve.log("[Q]" + key);
-			if (Cache.isDisabledDomain(key)) {
-				Log.resolve.log("disabled domain:" + msg.toIdString());
-				reply(new Reply(msg.client, msg.getId(), msg.bs));
-				return;
+
+			{
+				DNSQuestion[] qs = msg.getQuestions();
+				if (qs != null && qs.length > 0) {
+					String name = msg.getQuestions()[0].getName();
+					Cache.incAccess(name);
+					if (U.blacklist().contains(name)) {
+						Log.log("[bl]" + name);
+						reply(new Reply(msg.client, msg.getId(), msg.bs));
+						return;
+					}
+				}
 			}
+			if (msg.hasExtraData || AntiVirus.isBadQuestion(msg)) {
+				Log.log("[AV]bad " + AntiVirus.getSecurityString(msg));
+				msg = AntiVirus.clearifyQuestion(msg);
+			}
+			String key = msg.toIdString();
+			Log.log("[Q]" + key);
 			byte[] cachedBs = Cache.get(key);
 			if (cachedBs == null) {
 				notHit++;
-				Log.resolve.log("nohit, " + getHitRateStr());
+				Log.log("nohit, " + getHitRateStr());
 				DNSMessage msgResp = DnsResolver.resolve(msg);
 				if (msgResp == null) {
-					Log.resolve.log("cannot resolve:" + msg);
+					Log.log("cannot resolve:" + msg);
+					reply(new Reply(msg.client, msg.getId(), msg.bs));
 					return;
 				}
 				Cache.put(key, msgResp.bs);
 				reply(new Reply(msg.client, msg.getId(), msgResp.bs));
 			} else {
 				hit++;
-				Log.resolve.log("HIT, " + getHitRateStr());
+				Log.log("HIT, " + getHitRateStr());
 				reply(new Reply(msg.client, msg.getId(), cachedBs));
 			}
 
@@ -98,20 +113,11 @@ public class DnsProxy2 {
 	 * @throws java.lang.Exception
 	 */
 	public static void main(String[] args) throws Exception {
-		System.out.println("NeoeDnsProxy v1.160421.1");
+		System.out.println("NeoeDnsProxy " + U.VER);
 		if (args.length > 0 && "log".equals(args[0]))
 			Log.logToFile = true;
-		Log.init();
 		server = new Server("127.0.0.1", U.DEFAULT_DNS_PORT);
 		server.run();
-		// Runtime.getRuntime().addShutdownHook(new Thread() {
-		// public void run() {
-		// try {
-		// Cache.save();
-		// } catch (Throwable ex) {
-		// }
-		// }
-		// });
 	}
 
 	static class Server {
@@ -124,7 +130,7 @@ public class DnsProxy2 {
 			InetSocketAddress addr = new InetSocketAddress(bindIp, port);
 			sso = new DatagramSocket(port);
 			System.out.println("binded " + addr);
-			Log.app.log("binded " + addr);
+			Log.log("binded " + addr);
 		}
 
 		int running = 0;
@@ -154,35 +160,43 @@ public class DnsProxy2 {
 
 		}
 
+		Object lock = new Object();
+
 		private void run() {
-			Log.app.log("server started");
+			Log.log("server started");
 
 			try {
 				// loadConfig();
-				DnsResolver.init();
+				U.loadConf();
 				// Cache.load();
 				UI.addUI();
-
 				//
-				autoRefresh(60 * 60);
+				autoRefresh(U.autoRefreshInSec);
+				//
+				dumpSites();
 
 				while (true) {
 					byte[] buf = new byte[MAX_PACKET_SIZE];
 					final DatagramPacket packet = new DatagramPacket(buf, buf.length);
 					sso.receive(packet);
-					running++;
+					synchronized (lock) {
+						running++;
+					}
+
 					final long startTime = System.currentTimeMillis();
-					Log.app.log("accept(" + running + ")" + packet.getPort() + "/" + packet.getLength());
+					Log.log("accept(" + running + ")" + packet.getPort() + "/" + packet.getLength());
 					new Thread() {
 						public void run() {
 							new Quest(sso, packet).run();
-							running--;
+							synchronized (lock) {
+								running--;
+							}
 							long t2 = (System.currentTimeMillis() - startTime);
 							long s1 = (long) (avgTime * cnt + t2);
 							cnt++;
 							avgTime = s1 / (double) cnt;
-
-							Log.app.log("finish(" + running + ")[" + t2 + " / " + (int) avgTime + " ms]" + packet.getPort() + "/" + packet.getLength());
+							Log.log("finish(" + running + ")[" + t2 + " / " + (int) avgTime + " ms]" + packet.getPort()
+									+ "/" + packet.getLength());
 						}
 					}.start();
 				}
@@ -191,79 +205,106 @@ public class DnsProxy2 {
 				U.sendException(ex);
 			}
 		}
-
-		class DbSaver extends Thread {
-
-			@Override
-			public void run() {
-				final List<DnsRec> rs = new ArrayList<>();
-				while (true) {
-					try {
-						long t1 = System.currentTimeMillis();
-						{
-							int size = notHitKey.size();
-							rs.clear();
-							for (int i = 0; i < size; i++) {
-								Object[] o = notHitKey.take();
-								DnsRec rec = new DnsRec();
-								rec.domain = (String) o[0];
-								rec.reply = (byte[]) o[1];
-								if (rec.canFitToDB() && !U.inserted.contains(rec.domain)) {
-									U.inserted.add(rec.domain);
-									rec.updated = new Date();
-									rs.add(rec);
-								}
-							}
-
-						}
-						{
-							int size = hitKey.size();
-							final long now = System.currentTimeMillis();
-							for (int i = 0; i < size; i++) {
-								Object[] o = hitKey.take();
-								final String domain = (String) o[0];
-								final DNSMessage msg = (DNSMessage) o[1];
-								long updated = Cache.getUpdated(domain);
-								boolean needUpdate = now - updated > U.DNS_UPDATE_IN_MS;
-								if (needUpdate) {
-									final DNSMessage msgResp = DnsResolver.resolve(msg);
-									if (msgResp == null) {
-										Log.resolve.log("cannot resolve:" + msg);
-										continue;
+		/*-
+				class DbSaver extends Thread {
+		
+					@Override
+					public void run() {
+						final List<DnsRec> rs = new ArrayList<>();
+						while (true) {
+							try {
+								long t1 = System.currentTimeMillis();
+								{
+									int size = notHitKey.size();
+									rs.clear();
+									for (int i = 0; i < size; i++) {
+										Object[] o = notHitKey.take();
+										DnsRec rec = new DnsRec();
+										rec.domain = (String) o[0];
+										rec.reply = (byte[]) o[1];
+										if (rec.canFitToDB() && !U.inserted.contains(rec.domain)) {
+											U.inserted.add(rec.domain);
+											rec.updated = new Date();
+											rs.add(rec);
+										}
 									}
-									Cache.put(domain, msgResp.bs);
-
-								} else {
-
+		
 								}
+								{
+									int size = hitKey.size();
+									final long now = System.currentTimeMillis();
+									for (int i = 0; i < size; i++) {
+										Object[] o = hitKey.take();
+										final String domain = (String) o[0];
+										final DNSMessage msg = (DNSMessage) o[1];
+										long updated = Cache.getUpdated(domain);
+										boolean needUpdate = now - updated > U.DNS_UPDATE_IN_MS;
+										if (needUpdate) {
+											final DNSMessage msgResp = DnsResolver.resolve(msg);
+											if (msgResp == null) {
+												Log.log("cannot resolve:" + msg);
+												continue;
+											}
+											Cache.put(domain, msgResp.bs);
+		
+										} else {
+		
+										}
+									}
+		
+								}
+								long t2 = System.currentTimeMillis() - t1;
+								if (t2 > 10) {
+									Log.log("db update loop in " + t2 + "ms");
+								}
+								Thread.sleep(4000);
+							} catch (Throwable ex) {
+								U.sendException(ex);
 							}
-
 						}
-						long t2 = System.currentTimeMillis() - t1;
-						if (t2 > 10) {
-							Log.app.log("db update loop in " + t2 + "ms");
-						}
-						Thread.sleep(4000);
-					} catch (Throwable ex) {
-						U.sendException(ex);
 					}
 				}
+		*/
+
+		private void dumpSites() {
+
+			new Thread() {
+				public void run() {
+					while (true) {
+						try { // clear cache
+							if (U.dumpfile != null && new File(U.dumpfile).exists()) {
+								FileOutputStream out = new FileOutputStream(U.dumpfile);
+								Cache.dumpAccess(out);
+								out.close();
+							}
+						} catch (Exception ex) {
+							System.out.println("error dumpSites:" + ex);
+						}
+						U.sleep(U.dumpSleep);
+					}
+				}
+			}.start();
+
+		}
+
+		protected void dumpSitesToFile(File file) {
+			// TODO Auto-generated method stub
+
+		}
+	}
+
+	/*-
+		static class Event {
+	
+			Event(SocketAddress client, ByteBuffer buf) {
+				this.client = client;
+				this.buf = buf;
 			}
+	
+			SocketAddress client;
+			ByteBuffer buf;
 		}
-
-	}
-
-	static class Event {
-
-		Event(SocketAddress client, ByteBuffer buf) {
-			this.client = client;
-			this.buf = buf;
-		}
-
-		SocketAddress client;
-		ByteBuffer buf;
-	}
-
+	*/
 	static class Reply {
 
 		Reply(SocketAddress client, short id, byte[] data) {

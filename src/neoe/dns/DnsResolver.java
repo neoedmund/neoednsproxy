@@ -2,85 +2,48 @@ package neoe.dns;
 
 import static neoe.dns.U.DEFAULT_DNS_PORT;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
-import java.util.ArrayList;
 import java.util.List;
 
 import neoe.dns.format.DNSMessage;
+import neoe.util.Log;
 
 /**
- *
+ * *
+ * 
  * @author neoe
  */
 public class DnsResolver {
 
-	static boolean inited = false;
-	static List<String> dnsHostList;
-	static final String CONF = "dnsservers.cfg";
-
-	static {
-		init();
-	}
+	static List dnsHostList;
+	static final int MAX_PACKET_SIZE = 1024;
 
 	static DNSMessage resolve(DNSMessage msg) {
-		if (!inited) {
-			init();
-		}
 		if (dnsHostList == null || dnsHostList.isEmpty()) {
 			return null;
 		}
-		Log.app.log("resolving " + msg);
+		Log.log("resolving " + msg);
 		DNSMessage[] res = new DNSMessage[1];
 		Thread[] ts = new Thread[dnsHostList.size()];
 		int ti = 0;
-		for (String host : dnsHostList) {
-			ts[ti++] = resolveConcurrent(host, res, msg);
+		for (Object host : dnsHostList) {
+			ts[ti++] = resolveConcurrent((String) host, res, msg);
 		}
-		
-		for (int i = 0; i < 120; i++) { // bug: dont be too small
-			U.sleep(10);
+
+		for (int i = 0; i < U.timeoutUnitCnt; i++) { // bug: dont be too small
+			U.sleep(U.timeoutUnitInMs);
 			if (res[0] != null) {
 				U.stopThreads(ts);
 				return res[0];
 			}
 		}
 		// timeout!
-		Log.app.log("resolve timeout! data=" + msg);
+		Log.log("resolve timeout! data=" + msg);
 		U.stopThreads(ts);
 		return null;
-	}
-
-	public static void init() {
-		inited = true;
-		if (!new File(CONF).exists()) {
-			U.showMsg(CONF + " not exists! Please find it.\nProgram will exit now.");
-			System.exit(1);
-			return;
-		}
-		try {
-			BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(CONF), "utf8"));
-			dnsHostList = new ArrayList<>();
-			String line;
-			while ((line = in.readLine()) != null) {
-				line = line.trim();
-				if (line.startsWith("#") || line.length() == 0) {
-					continue;
-				}
-				dnsHostList.add(line);
-			}
-			in.close();
-			Log.app.log("read dns list size:" + dnsHostList.size());
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			Log.app.log("dns list init err:" + ex);
-		}
 	}
 
 	private static Thread resolveConcurrent(final String host, final DNSMessage[] res, final DNSMessage msg) {
@@ -90,11 +53,10 @@ public class DnsResolver {
 					DNSMessage resp = resolve(host, msg);
 					if (resp != null && res[0] == null) {
 						res[0] = resp;
-						Log.resolve
-								.log("first reply from " + resp.host + ", data=" + resp + "[" + resp.bs.length + "]");
+						Log.log("first reply from " + resp.host + ", data=" + resp + "[" + resp.bs.length + "]");
 					}
 				} catch (Exception ex) {
-					Log.app.log("resolve err:" + ex);
+					Log.log("resolve err:" + ex);
 				}
 			}
 		};
@@ -133,5 +95,5 @@ public class DnsResolver {
 		}
 		return null;
 	}
-    static final int MAX_PACKET_SIZE = 1024;
+
 }

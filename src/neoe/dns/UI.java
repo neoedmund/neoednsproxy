@@ -10,9 +10,11 @@ import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.sql.Connection;
+
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
+
+import neoe.util.Log;
 
 /**
  *
@@ -29,7 +31,7 @@ class UI {
 
     static void addUI() throws IOException {
         if (!SystemTray.isSupported()) {
-            Log.app.log("SystemTray is not supported");
+            Log.log( "SystemTray is not supported");
             return;
         }
         final PopupMenu popup = new PopupMenu();

@@ -7,6 +7,6 @@ prjs:[
 destDir:".",
 debug:true,
 source:7,
-target:"1.7",
+target:7,
 }
 
