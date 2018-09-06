@@ -8,14 +8,11 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import neoe.dns.DnsProxy2.Func;
 import neoe.dns.format.DNSMessage;
 import neoe.dns.format.DNSQuestion;
-import neoe.dns.model.DnsRec;
 import neoe.util.Log;
 
 /**
@@ -23,6 +20,10 @@ import neoe.util.Log;
  * @author neoe
  */
 public class DnsProxy2 {
+
+	public interface Func {
+		boolean run();
+	}
 
 	public static class Quest {
 
@@ -108,8 +109,7 @@ public class DnsProxy2 {
 	static final int MAX_PACKET_SIZE = 1024;
 
 	/**
-	 * @param args
-	 *            the command line arguments
+	 * @param args the command line arguments
 	 * @throws java.lang.Exception
 	 */
 	public static void main(String[] args) throws Exception {
@@ -169,7 +169,21 @@ public class DnsProxy2 {
 				// loadConfig();
 				U.loadConf();
 				// Cache.load();
-				UI.addUI();
+				tryMore(10, 10000, new Func() {
+
+					@Override
+					public boolean run() {
+						try {
+							UI.addUI();
+							if (UI.ok)
+								return true;
+						} catch (Exception e) {
+							System.out.println(e);
+						}
+						return false;
+					}
+				});
+
 				//
 				autoRefresh(U.autoRefreshInSec);
 				//
@@ -265,6 +279,26 @@ public class DnsProxy2 {
 					}
 				}
 		*/
+
+		private void tryMore(final int time, final int delay, final Func f) {
+			new Thread() {
+				public void run() {
+					for (int i = 0; i < time; i++) {
+						try {
+							if (i > 0)
+								System.out.println("retry " + (i + 1));
+							boolean b = f.run();
+							if (b)
+								break;
+						} catch (Exception e) {
+							System.out.println(e);
+						}
+						U.sleep(delay);
+					}
+				}
+			}.start();
+
+		}
 
 		private void dumpSites() {
 
