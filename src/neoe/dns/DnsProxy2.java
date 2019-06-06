@@ -10,7 +10,6 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.LinkedBlockingDeque;
 
-import neoe.dns.DnsProxy2.Func;
 import neoe.dns.format.DNSMessage;
 import neoe.dns.format.DNSQuestion;
 import neoe.util.Log;
@@ -20,10 +19,6 @@ import neoe.util.Log;
  * @author neoe
  */
 public class DnsProxy2 {
-
-	public interface Func {
-		boolean run();
-	}
 
 	public static class Quest {
 
@@ -49,6 +44,8 @@ public class DnsProxy2 {
 
 		static int notHit, hit;
 
+		DoH1111 doh1111 = new DoH1111();
+
 		private void dealWith(DNSMessage msg) throws Exception {
 
 			{
@@ -63,23 +60,41 @@ public class DnsProxy2 {
 					}
 				}
 			}
-			if (msg.hasExtraData || AntiVirus.isBadQuestion(msg)) {
+			// if (msg.hasExtraData) {
+			// Log.log("[t]hasExtraData");
+			// }
+			if (msg.hasExtraData /* || AntiVirus.isBadQuestion(msg) */) {
 				Log.log("[AV]bad " + AntiVirus.getSecurityString(msg));
 				msg = AntiVirus.clearifyQuestion(msg);
 			}
 			String key = msg.toIdString();
 			Log.log("[Q]" + key);
+			key = key.toLowerCase();
+
 			byte[] cachedBs = Cache.get(key);
 			if (cachedBs == null) {
 				notHit++;
 				Log.log("nohit, " + getHitRateStr());
+				if (U.useDoh) {
+					System.out.println("{ doh1111");
+					doh1111.serverIPV4(msg, so, packet, key);
+					System.out.println("doh1111 } ");
+					return;
+				}
+
+				if (MyDomains.serve(msg, so, packet, key)) {
+					return;
+				}
 				DNSMessage msgResp = DnsResolver.resolve(msg);
 				if (msgResp == null) {
 					Log.log("cannot resolve:" + msg);
 					reply(new Reply(msg.client, msg.getId(), msg.bs));
 					return;
 				}
-				Cache.put(key, msgResp.bs);
+				// Log.log("[d]resp=" + msgResp.toString());
+				if (msgResp.getAnswers() != null && msgResp.getAnswers().length > 0) {
+					Cache.put(key, msgResp.bs);
+				}
 				reply(new Reply(msg.client, msg.getId(), msgResp.bs));
 			} else {
 				hit++;
@@ -116,6 +131,11 @@ public class DnsProxy2 {
 		System.out.println("NeoeDnsProxy " + U.VER);
 		if (args.length > 0 && "log".equals(args[0]))
 			Log.logToFile = true;
+		else {
+			Log.logToFile = false;
+			Log.stdout = true;
+
+		}
 		server = new Server("127.0.0.1", U.DEFAULT_DNS_PORT);
 		server.run();
 	}
@@ -169,21 +189,7 @@ public class DnsProxy2 {
 				// loadConfig();
 				U.loadConf();
 				// Cache.load();
-				tryMore(10, 10000, new Func() {
-
-					@Override
-					public boolean run() {
-						try {
-							UI.addUI();
-							if (UI.ok)
-								return true;
-						} catch (Exception e) {
-							System.out.println(e);
-						}
-						return false;
-					}
-				});
-
+				UI.addUI();
 				//
 				autoRefresh(U.autoRefreshInSec);
 				//
@@ -279,26 +285,6 @@ public class DnsProxy2 {
 					}
 				}
 		*/
-
-		private void tryMore(final int time, final int delay, final Func f) {
-			new Thread() {
-				public void run() {
-					for (int i = 0; i < time; i++) {
-						try {
-							if (i > 0)
-								System.out.println("retry " + (i + 1));
-							boolean b = f.run();
-							if (b)
-								break;
-						} catch (Exception e) {
-							System.out.println(e);
-						}
-						U.sleep(delay);
-					}
-				}
-			}.start();
-
-		}
 
 		private void dumpSites() {
 

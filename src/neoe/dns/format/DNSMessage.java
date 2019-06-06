@@ -15,10 +15,10 @@ import java.nio.CharBuffer;
  */
 public final class DNSMessage {
 
-	private static final short RESPONSE_MASK = (short) 0x8000;
+	public static final short RESPONSE_MASK = (short) 0x8000;
 	private static final short OPCODE_MASK = (short) 0x7800;
 	private static final int OPCODE_SHIFT = 11;
-	private static final short AA_MASK = (short) 0x0400;
+	public static final short AA_MASK = (short) 0x0400;
 	private static final short TC_MASK = (short) 0x0200;
 	private static final short RD_MASK = (short) 0x0100;
 	private static final short RA_MASK = (short) 0x0080;
@@ -97,41 +97,51 @@ public final class DNSMessage {
 
 	@Override
 	public String toString() {
-		final StringBuilder builder = new StringBuilder();
-		builder.append("Message { id: ");
-		builder.append(id);
-		builder.append(", flags: ");
-		builder.append(flags);
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Message { id: ");
+		sb.append(id);
+		sb.append(", flags: ");
+		sb.append(flags);
 		if (questions.length > 0) {
-			builder.append(", questions: { ");
+			sb.append(", questions: { ");
 			for (int i = 0; i < questions.length; ++i) {
 				if (i != 0) {
-					builder.append(", ");
+					sb.append(", ");
 				}
 				if (questions[i] != null) {
-					builder.append(questions[i].toString());
+					sb.append(questions[i].toString());
 				} else {
-					builder.append("null");
+					sb.append("null");
 				}
 			}
-			builder.append(" }");
+			sb.append(" }");
 		}
-		if (answers.length > 0) {
-			builder.append("}, answers: { ");
-			for (int i = 0; i < answers.length; ++i) {
+
+		dump(answers, "answers", sb);
+		dump(nameservers, "nameservers", sb);
+		dump(additionalrecords, "additional", sb);
+		sb.append(" }");
+		return sb.toString();
+	}
+
+	private void dump(DNSResourceRecord[] rec, String title, StringBuilder sb) {
+		if (rec.length > 0) {
+			sb.append(", " + title + ": { ");
+			for (int i = 0; i < rec.length; ++i) {
 				if (i != 0) {
-					builder.append(", ");
+					sb.append(", ");
 				}
-				if (answers[i] != null) {
-					builder.append(answers[i].toString());
+				if (rec[i] != null) {
+					sb.append(rec[i].toString());
 				} else {
-					builder.append("null");
+					sb.append("null");
 				}
 			}
-			builder.append(" }");
+			sb.append(" }");
+		} else {
+			sb.append("{no " + title + "}");
 		}
-		builder.append(" }");
-		return builder.toString();
+
 	}
 
 	public String toIdString() {
@@ -191,7 +201,7 @@ public final class DNSMessage {
 				buffer.position(offset);
 				break;
 			default:
-				throw new DNSParseException("Unsupported DNS name byte");
+				throw new DNSParseException("Unsupported DNS name byte:" + Integer.toHexString(b & 0xff));
 			}
 		}
 		if (lastpos != -1) {
@@ -232,7 +242,8 @@ public final class DNSMessage {
 		final short nscount = buffer.getShort();
 		final short arcount = buffer.getShort();
 
-		final DNSMessage msg = new DNSMessage(id, flags, qdcount, complete ? ancount : 0, complete ? nscount : 0, complete ? arcount : 0);
+		final DNSMessage msg = new DNSMessage(id, flags, qdcount, complete ? ancount : 0, complete ? nscount : 0,
+				complete ? arcount : 0);
 		for (int i = 0; i < qdcount; ++i) {
 			msg.questions[i] = parseQuestion(buffer);
 		}

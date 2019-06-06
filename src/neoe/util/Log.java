@@ -23,7 +23,7 @@ public class Log {
 
 	public static boolean debug = true;
 
-	public static boolean logToFile;
+	public static boolean logToFile=true;
 
 	public synchronized static Log getLog(String name) {
 		Log log = cache.get(name);

@@ -42,6 +42,7 @@ public class U {
 	static long DNS_UPDATE_IN_MS = 1000 * 60 * 2;
 	static Set<String> inserted = new HashSet<>();
 	private static boolean useBlacklist;
+	public static boolean useDoh;
 	private static Map conf;
 	public static boolean debug = false;
 	private static HashSet lastSet;
@@ -60,9 +61,14 @@ public class U {
 			lastList = list;
 			lastSet = new HashSet(list);
 		}
-		System.out.println("[bl]="+lastSet);
+		System.out.println("[bl]=" + lastSet);
 		return lastSet;
 	};
+
+	public static Object conf(String key) throws Exception {
+		conf = Config.getConfig(APP_CONF, false);
+		return Config.get(conf, key);
+	}
 
 	public static void loadConf() throws Exception {
 		conf = Config.getConfig(APP_CONF, false);
@@ -77,10 +83,12 @@ public class U {
 		debug = "true".equals(conf.get("debug"));
 		dumpfile = (String) conf.get("dumpfile");
 		dumpSleep = toInt(conf.get("dumpSleep"), 5000);
-		
-		timeoutUnitInMs= toInt(conf.get("timeoutUnitInMs"), 10);
-		timeoutUnitCnt= toInt(conf.get("timeoutUnitCnt"), 10);
+
+		timeoutUnitInMs = toInt(conf.get("timeoutUnitInMs"), 10);
+		timeoutUnitCnt = toInt(conf.get("timeoutUnitCnt"), 10);
 		DnsResolver.dnsHostList = (List) conf.get("dns");
+		useDoh = "true".equals(conf.get("doh"));
+		System.out.println("doh:"+useDoh);
 	}
 
 	private static int toInt(Object o, int def) {

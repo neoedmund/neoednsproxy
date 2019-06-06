@@ -22,10 +22,10 @@ public class DnsResolver {
 	static final int MAX_PACKET_SIZE = 1024;
 
 	static DNSMessage resolve(DNSMessage msg) {
+		Log.log("resolving " + msg);
 		if (dnsHostList == null || dnsHostList.isEmpty()) {
 			return null;
 		}
-		Log.log("resolving " + msg);
 		DNSMessage[] res = new DNSMessage[1];
 		Thread[] ts = new Thread[dnsHostList.size()];
 		int ti = 0;

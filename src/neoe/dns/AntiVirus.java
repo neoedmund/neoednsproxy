@@ -5,6 +5,7 @@ import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 
 import neoe.dns.format.DNSMessage;
+import neoe.util.Log;
 
 public class AntiVirus {
 	/** some virus send user data via DNS record, here clear those data */
@@ -24,12 +25,15 @@ public class AntiVirus {
 
 	public static boolean isBadQuestion(DNSMessage msg) {
 		if (msg.isResponse()) {
+			Log.log("[t]isBadQuestion.isResponse");
 			return true;
 		}
 		if (msg.getAnswers().length != 0 || msg.getAdditionalRecords().length != 0 || msg.getNameServers().length != 0) {
+			Log.log("[t]isBadQuestion.length=0");
 			return true;
 		}
 		if (msg.getQuestions().length != 1) {
+			Log.log("[t]isBadQuestion.getQuestions="+msg.getQuestions().length);
 			return true;
 		}
 		return false;
