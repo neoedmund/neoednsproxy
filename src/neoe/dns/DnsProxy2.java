@@ -136,7 +136,7 @@ public class DnsProxy2 {
 			Log.stdout = true;
 
 		}
-		server = new Server("127.0.0.1", U.DEFAULT_DNS_PORT);
+		server = new Server("0.0.0.0", U.DEFAULT_DNS_PORT);
 		server.run();
 	}
 
@@ -148,8 +148,8 @@ public class DnsProxy2 {
 
 		private Server(String bindIp, int port) throws Exception {
 			InetSocketAddress addr = new InetSocketAddress(bindIp, port);
+			System.out.println("binding  " + addr);
 			sso = new DatagramSocket(port);
-			System.out.println("binded " + addr);
 			Log.log("binded " + addr);
 		}
 

@@ -1,0 +1,9 @@
+/* build script used by [neoebuild](https://github.com/neoedmund/neoebuild) */
+{
+	prjs : [
+		[ NeoeDnsProxy . { main : "neoe.dns.DnsProxy2" } ]
+	]
+	source : 8
+	target : 8
+}
+

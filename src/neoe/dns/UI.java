@@ -1,143 +1,146 @@
-package neoe.dns;
+package neoe . dns ;
 
-import java.awt.AWTException;
-import java.awt.Image;
-import java.awt.Menu;
-import java.awt.MenuItem;
-import java.awt.PopupMenu;
-import java.awt.SystemTray;
-import java.awt.TrayIcon;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.IOException;
+import java . awt . AWTException ;
+import java . awt . Image ;
+import java . awt . Menu ;
+import java . awt . MenuItem ;
+import java . awt . PopupMenu ;
+import java . awt . SystemTray ;
+import java . awt . TrayIcon ;
+import java . awt . event . ActionEvent ;
+import java . awt . event . ActionListener ;
+import java . io . IOException ;
 
-import javax.swing.ImageIcon;
-import javax.swing.JOptionPane;
+import javax . swing . ImageIcon ;
+import javax . swing . JOptionPane ;
 
-import neoe.util.Log;
+import neoe . util . Log ;
 
 /**
  *
  * @author neoe
  */
 class UI {
+	static TrayIcon trayIcon ;
 
-    static TrayIcon trayIcon;
+	static Image createImage ( String path , String description ) throws IOException {
+		return ( new ImageIcon ( U . readBytes ( U . getIns ( path ) ) , description ) ) . getImage ( ) ;
+	}
+	static void addUI ( ) {
+		new Thread ( ( ) -> {
+				while ( true ) {
+					try {
+						_addUI ( ) ;
+						return ;
+					} catch ( Throwable ex ) {
+						System . out . println ( "neoedns SystemTray not ready, try later. " + ex ) ;
+					}
+					U . sleep ( 10000 ) ;
+					break;//because seem not work
+				}
+			} ) . start ( ) ;
+	}
+	static void _addUI ( ) throws Exception {
+		if ( ! SystemTray . isSupported ( ) ) {
+			throw new RuntimeException ( "SystemTray is not supported" ) ;
+			//return ;
+		}
+		final PopupMenu popup = new PopupMenu ( ) ;
 
-    static Image createImage(String path, String description) throws IOException {
-        return (new ImageIcon(U.readBytes(U.getIns(path)), description)).getImage();
+		trayIcon = new TrayIcon ( createImage ( "icon.png" , "tray icon" ) ) ;
+		trayIcon . setImageAutoSize ( true ) ;
+		final SystemTray tray = SystemTray . getSystemTray ( ) ;
 
-    }
+		// Create a pop-up menu components
+		final MenuItem saveCache = new MenuItem ( "Save Cache" ) ;
+		Menu menuClear = new Menu ( "Clear Cache" ) ;
+		final MenuItem clearExact = new MenuItem ( "Clear exact name" ) ;
+		final MenuItem clearWild = new MenuItem ( "Clear wildcard name" ) ;
+		final MenuItem clearAll = new MenuItem ( "Clear all" ) ;
+		final MenuItem exitItem = new MenuItem ( "Exit" ) ;
 
-    static void addUI() throws IOException {
-        if (!SystemTray.isSupported()) {
-            Log.log( "SystemTray is not supported");
-            return;
-        }
-        final PopupMenu popup = new PopupMenu();
+		//Add components to pop-up menu
+		//popup.add(saveCache);
+		//popup.addSeparator();
+		popup . add ( menuClear ) ;
+		menuClear . add ( clearExact ) ;
+		menuClear . add ( clearWild ) ;
+		menuClear . add ( clearAll ) ;
+		popup . addSeparator ( ) ;
+		popup . add ( exitItem ) ;
 
-        trayIcon = new TrayIcon(createImage("icon.png", "tray icon"));
-        trayIcon.setImageAutoSize(true);
-        final SystemTray tray = SystemTray.getSystemTray();
+		ActionListener handle = new ActionListener ( ) {
+			@ Override
+			public void actionPerformed ( ActionEvent e ) {
+				try {
+					Object src = e . getSource ( ) ;
+					if ( src == exitItem ) {
+						//doSave(false);
+						System . exit ( 0 ) ;
+					} else if ( src == saveCache ) {
+						//doSave(true);
+					} else if ( src == clearAll ) {
+						doClearAll ( ) ;
+					} else if ( src == clearExact ) {
+						doClearExact ( ) ;
+					} else if ( src == clearWild ) {
+						doClearWild ( ) ;
+					}
+				} catch ( Exception ex ) {
+					U . showMsg ( "error:" + ex ) ;
+				}
+				U . updateTooltip ( ) ;
+			}
 
-        // Create a pop-up menu components
-        final MenuItem saveCache = new MenuItem("Save Cache");
-        Menu menuClear = new Menu("Clear Cache");
-        final MenuItem clearExact = new MenuItem("Clear exact name");
-        final MenuItem clearWild = new MenuItem("Clear wildcard name");
-        final MenuItem clearAll = new MenuItem("Clear all");
-        final MenuItem exitItem = new MenuItem("Exit");
+			private void doClearAll ( ) throws Exception {
+				if ( JOptionPane . showConfirmDialog ( null , "Are you sure to clear ALL dns cache?" ) != JOptionPane . YES_OPTION ) {
+					return ;
+				}
+				int n = Cache . m . size ( ) ;
+				Cache . m . clear ( ) ;
+				Cache . updated . clear ( ) ;
+				U . inserted . clear ( ) ;
+				U . showMsg ( "Cleared all " + n + " records." ) ;
+			}
 
-        //Add components to pop-up menu
-        //popup.add(saveCache);
-        //popup.addSeparator();
-        popup.add(menuClear);
-        menuClear.add(clearExact);
-        menuClear.add(clearWild);
-        menuClear.add(clearAll);
-        popup.addSeparator();
-        popup.add(exitItem);
+			private void doSave ( boolean showMsg ) {
+				try {
+					int n = Cache . save ( ) ;
+					if ( showMsg ) {
+						U . showMsg ( "Saved " + n + " records." ) ;
+					}
+				} catch ( Throwable ex ) {
+					U . showMsg ( "Cannot save: " + ex ) ;
+				}
+			}
 
-        ActionListener handle = new ActionListener() {
+			private void doClearExact ( ) throws Exception {
+				final String s = JOptionPane . showInputDialog ( "Input domain name" ) ;
+				if ( s != null ) {
+					int n = Cache . clearExact ( s ) ;
 
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    Object src = e.getSource();
-                    if (src == exitItem) {
-                        //doSave(false);
-                        System.exit(0);
-                    } else if (src == saveCache) {
-                        //doSave(true);
-                    } else if (src == clearAll) {
-                        doClearAll();
-                    } else if (src == clearExact) {
-                        doClearExact();
-                    } else if (src == clearWild) {
-                        doClearWild();
-                    }
-                } catch (Exception ex) {
-                    U.showMsg("error:" + ex);
-                }
-                U.updateTooltip();
+					U . showMsg ( "Cleared " + n + " records." ) ;
+				}
+			}
 
-            }
+			private void doClearWild ( ) throws Exception {
+				final String s = JOptionPane . showInputDialog ( "Input domain name" ) ;
+				if ( s != null ) {
+					int n = Cache . clearWild ( s ) ;
 
-            private void doClearAll() throws Exception {
-                if (JOptionPane.showConfirmDialog(null, "Are you sure to clear ALL dns cache?") != JOptionPane.YES_OPTION) {
-                    return;
-                }
-                int n = Cache.m.size();
-                Cache.m.clear();
-                Cache.updated.clear();
-                U.inserted.clear();                
-                U.showMsg("Cleared all " + n + " records.");
-            }
+					U . showMsg ( "Cleared " + n + " records." ) ;
+				}
+			}
+		} ;
+		saveCache . addActionListener ( handle ) ;
+		clearExact . addActionListener ( handle ) ;
+		clearWild . addActionListener ( handle ) ;
+		clearAll . addActionListener ( handle ) ;
+		exitItem . addActionListener ( handle ) ;
 
-            private void doSave(boolean showMsg) {
-                try {
-                    int n = Cache.save();
-                    if (showMsg) {
-                        U.showMsg("Saved " + n + " records.");
-                    }
-                } catch (Throwable ex) {
-                    U.showMsg("Cannot save: " + ex);
-                }
-            }
+		trayIcon . setPopupMenu ( popup ) ;
 
-            private void doClearExact() throws Exception {
-                final String s = JOptionPane.showInputDialog("Input domain name");
-                if (s != null) {
-                    int n = Cache.clearExact(s);
-                 
-                    U.showMsg("Cleared " + n + " records.");
-                }
-            }
-
-            private void doClearWild() throws Exception {
-                final String s = JOptionPane.showInputDialog("Input domain name");
-                if (s != null) {
-                    int n = Cache.clearWild(s);
-                  
-                    U.showMsg("Cleared " + n + " records.");
-                }
-            }
-
-        };
-        saveCache.addActionListener(handle);
-        clearExact.addActionListener(handle);
-        clearWild.addActionListener(handle);
-        clearAll.addActionListener(handle);
-        exitItem.addActionListener(handle);
-
-        trayIcon.setPopupMenu(popup);
-
-        try {
-            tray.add(trayIcon);
-            U.updateTooltip();
-        } catch (AWTException e) {
-            U.sendException(e);
-        }
-    }
-
+		tray . add ( trayIcon ) ;
+		U . updateTooltip ( ) ;
+	}
 }
